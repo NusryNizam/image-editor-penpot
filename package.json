@@ -14,10 +14,12 @@
     "@penpot/plugin-styles": "^1.0.0",
     "@penpot/plugin-types": "^1.0.0",
     "fabric": "^6.5.3",
+    "lodash": "^4.17.21",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.13",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@typescript-eslint/eslint-plugin": "^8.18.0",

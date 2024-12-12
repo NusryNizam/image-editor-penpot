@@ -1,11 +1,12 @@
 import { useState } from "react";
 import "./App.css";
+import ImageEditor from "./components/ImageEditor";
 
 function App() {
   const url = new URL(window.location.href);
   const initialTheme = url.searchParams.get("theme");
 
-  const [theme, setTheme] = useState(initialTheme || null);
+  const [theme, setTheme] = useState(initialTheme || undefined);
 
   window.addEventListener("message", (event) => {
     if (event.data.type === "theme") {
@@ -13,7 +14,13 @@ function App() {
     }
   });
 
-  return <div data-theme={theme}>Welcome to your plugin!</div>;
+  return (
+    <div data-theme={theme}>
+      Welcome to your plugin!
+      <div>More data</div>
+      <ImageEditor theme={theme} />
+    </div>
+  );
 }
 
 export default App;

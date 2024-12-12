@@ -1,4 +1,4 @@
-@import '@penpot/plugin-styles/styles.css';
+@import "@penpot/plugin-styles/styles.css";
 
 *,
 *::before,
@@ -6,4 +6,11 @@
   box-sizing: border-box;
   margin: 0;
   font-weight: normal;
+}
+
+input[data-theme="light"] {
+  accent-color: var(--la-primary);
+}
+input[data-theme="dark"] {
+  accent-color: var(--da-primary);
 }
