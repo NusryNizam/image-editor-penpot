@@ -14,3 +14,12 @@ input[data-theme="light"] {
 input[data-theme="dark"] {
   accent-color: var(--da-primary);
 }
+
+.range {
+  padding-inline: 0;
+  margin-top: -0.125rem;
+}
+
+input[type="color"] {
+  padding: 0.125rem;
+}

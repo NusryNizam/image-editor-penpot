@@ -16,8 +16,6 @@ function App() {
 
   return (
     <div data-theme={theme}>
-      Welcome to your plugin!
-      <div>More data</div>
       <ImageEditor theme={theme} />
     </div>
   );

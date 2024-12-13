@@ -1,0 +1,19 @@
+.image-editor {
+  padding: 1rem;
+  display: flex;
+  gap: 1rem;
+}
+
+canvas {
+  border: 1px solid var(--lb-secondary);
+}
+
+label {
+  text-transform: capitalize;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
