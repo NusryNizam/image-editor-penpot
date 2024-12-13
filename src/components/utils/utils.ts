@@ -3,7 +3,7 @@ type DebounceOptions = {
   trailing?: boolean;
   maxWait?: number;
 };
-function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
   options: DebounceOptions = {}
@@ -123,4 +123,12 @@ function debounce<T extends (...args: any[]) => any>(
   return debounced;
 }
 
-export default debounce;
+export const arrayBufferToBase64 = (buffer: Uint8Array): string => {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+};

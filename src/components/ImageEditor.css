@@ -4,8 +4,12 @@
   gap: 1rem;
 }
 
-canvas {
+canvas[data-theme="light"] {
   border: 1px solid var(--lb-secondary);
+}
+
+canvas[data-theme="dark"] {
+  border: 1px solid var(--db-secondary);
 }
 
 label {
@@ -14,6 +18,6 @@ label {
 
 .form-container {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  flex-direction: row;
+  gap: 1rem;
 }

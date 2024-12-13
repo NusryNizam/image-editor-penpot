@@ -23,3 +23,7 @@ input[data-theme="dark"] {
 input[type="color"] {
   padding: 0.125rem;
 }
+
+.reset {
+  border-radius: 100%;
+}
