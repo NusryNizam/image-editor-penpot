@@ -6,6 +6,8 @@ function App() {
   const url = new URL(window.location.href);
   const initialTheme = url.searchParams.get("theme");
   const [imageData, setImageData] = useState<Uint8Array>();
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [isAddingToCanvas, setIsAddingToCanvas] = useState(false);
 
   const [theme, setTheme] = useState(initialTheme || undefined);
 
@@ -14,15 +16,33 @@ function App() {
       setTheme(event.data.content);
     }
 
+    if (event.data.type === "changing-selection-start") {
+      setIsSelecting(true);
+    }
+
+    if (event.data.type === "changing-selection-end") {
+      setIsSelecting(false);
+    }
+
     if (event.data.type === "selection") {
-      console.log("inside web app:", event.data.data);
+      setIsSelecting(false);
       setImageData(event.data.data);
+    }
+
+    if (event.data.type === "image-success") {
+      setIsAddingToCanvas(false);
     }
   });
 
   return (
-    <div data-theme={theme}>
-      <ImageEditor theme={theme} imageData={imageData} />
+    <div className="app" data-theme={theme}>
+      <ImageEditor
+        theme={theme}
+        imageData={imageData}
+        isLoading={isSelecting}
+        isAddingToCanvas={isAddingToCanvas}
+        setAddingToCanvas={setIsAddingToCanvas}
+      />
     </div>
   );
 }

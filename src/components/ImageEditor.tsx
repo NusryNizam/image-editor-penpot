@@ -1,141 +1,227 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, filters } from "fabric";
+import { debounce } from "lodash";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useImageLoader } from "../hooks/useImageLoader";
+import { useCanvas } from "../hooks/useCanvas";
 import "./ImageEditor.css";
-import { Canvas, FabricImage, filters } from "fabric";
-import { debounce, filter } from "lodash";
-import { arrayBufferToBase64 } from "./utils/utils";
-type ImageProps = {
+import Loader from "./Loader";
+
+// Types and Interfaces
+interface ImageProps {
   imageData?: Uint8Array;
   theme?: string;
-};
-
-enum FilterValues {
-  brightness = "brightness",
-  contrast = "contrast",
-  saturation = "saturation",
-  blur = "blur",
-  noise = "noise",
-  pixelate = "pixelate",
-  grayscale = "grayscale",
-  vintage = "vintage",
-  vibrance = "vibrance",
-  resize = "resize",
-  blend = "blend",
+  isLoading: boolean;
+  isAddingToCanvas: boolean;
+  setAddingToCanvas: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-function ImageEditor({ imageData, theme = "light" }: ImageProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [canvas, setCanvas] = useState<Canvas | null>(null);
-  const [activeImage, setActiveImage] = useState<FabricImage | null>(null);
-  const originalImageRef = useRef<FabricImage | null>(null);
+interface FilterState {
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  blur: number;
+  grayscale: number;
+  vintage: number;
+  noise: number;
+  pixelate: number;
+  vibrance: number;
+  blend: string;
+}
 
-  const [filterVals, setFilterVals] = useState({
-    brightness: 0,
-    contrast: 0,
-    saturation: 0,
-    blur: 0,
-    grayscale: 0,
-    vintage: 0,
-    noise: 0,
-    pixelate: 0,
-    vibrance: 0,
-    blend: "#ffffff",
-  });
+export enum FilterType {
+  Brightness = "brightness",
+  Contrast = "contrast",
+  Saturation = "saturation",
+  Blur = "blur",
+  Noise = "noise",
+  Pixelate = "pixelate",
+  Grayscale = "grayscale",
+  Vintage = "vintage",
+  Vibrance = "vibrance",
+  Blend = "blend",
+}
+
+// Filter Configuration
+const FILTER_CONFIG: Record<
+  string,
+  { min: number; max: number; default: number; step: number }
+> = {
+  [FilterType.Brightness]: { min: -0.8, max: 0.8, step: 0.05, default: 0 },
+  [FilterType.Contrast]: { min: -0.8, max: 0.8, step: 0.05, default: 0 },
+  [FilterType.Saturation]: { min: -1, max: 1, step: 0.05, default: 0 },
+  [FilterType.Blur]: { min: 0, max: 1, step: 0.05, default: 0 },
+  [FilterType.Noise]: { min: 0, max: 200, step: 1, default: 0 },
+  [FilterType.Pixelate]: { min: 1, max: 50, step: 1, default: 1 },
+  [FilterType.Grayscale]: { min: 0, max: 1, step: 1, default: 0 },
+  [FilterType.Vintage]: { min: 0, max: 1, step: 1, default: 0 },
+  [FilterType.Vibrance]: { min: 0, max: 1.25, step: 0.05, default: 0 },
+};
+
+const initialState = {
+  brightness: 0,
+  contrast: 0,
+  saturation: 0,
+  blur: 0,
+  grayscale: 0,
+  vintage: 0,
+  noise: 0,
+  pixelate: 1,
+  vibrance: 0,
+  blend: "#ffffff",
+};
+
+// Main Component
+function ImageEditor({
+  imageData,
+  theme = "light",
+  isLoading,
+  isAddingToCanvas,
+  setAddingToCanvas,
+}: ImageProps) {
+  const { canvasRef, canvas } = useCanvas(300, 300);
+  const { activeImage, originalImageRef } = useImageLoader(canvas, imageData);
+
+  const [filterValues, setFilterValues] = useState<FilterState>(initialState);
 
   const rafRef = useRef<number | null>(null);
   const pendingValueRef = useRef<number | null>(null);
 
-  const applyFiltersWithRAF = useCallback(
-    (value: number, filterValues: FilterValues, extra?: string) => {
-      // Store the latest value
-      pendingValueRef.current = value;
+  // Filter Application Logic
+  const applyFilter = useCallback(
+    (value: number, filterType: FilterType, extra?: string) => {
+      if (!activeImage || !canvas) return;
 
-      // If we already have a frame queued, don't queue another
-      if (rafRef.current) return;
+      const filterMap = {
+        [FilterType.Brightness]: () =>
+          new filters.Brightness({ brightness: value }),
+        [FilterType.Contrast]: () => new filters.Contrast({ contrast: value }),
+        [FilterType.Saturation]: () =>
+          new filters.Saturation({ saturation: value }),
+        [FilterType.Blur]: () => new filters.Blur({ blur: value }),
+        [FilterType.Noise]: () => new filters.Noise({ noise: value }),
+        [FilterType.Pixelate]: () => new filters.Pixelate({ blocksize: value }),
+        [FilterType.Vibrance]: () => new filters.Vibrance({ vibrance: value }),
+        [FilterType.Blend]: () => new filters.BlendColor({ color: extra }),
+        [FilterType.Grayscale]: () =>
+          value
+            ? new filters.Grayscale()
+            : new filters.Brightness({ brightness: 0 }),
+        [FilterType.Vintage]: () =>
+          value
+            ? new filters.Vintage()
+            : new filters.Brightness({ brightness: 0 }),
+      };
 
-      // Queue the update
-      rafRef.current = requestAnimationFrame(() => {
-        // Clear the frame reference
-        rafRef.current = null;
-
-        // Get the latest value
-        const latestValue = pendingValueRef.current;
-        if (latestValue === null || !activeImage || !canvas) return;
-
-        // Clear the pending value
-        pendingValueRef.current = null;
-
-        // Apply the filter
-        switch (filterValues) {
-          case FilterValues.brightness:
-            activeImage.filters[0] = new filters.Brightness({
-              brightness: value,
-            });
-            break;
-
-          case FilterValues.contrast:
-            activeImage.filters[1] = new filters.Contrast({
-              contrast: value,
-            });
-            break;
-
-          case FilterValues.saturation:
-            activeImage.filters[2] = new filters.Saturation({
-              saturation: value,
-            });
-            break;
-
-          case FilterValues.blur:
-            activeImage.filters[3] = new filters.Blur({
-              blur: value,
-            });
-            break;
-
-          case FilterValues.noise:
-            activeImage.filters[4] = new filters.Noise({ noise: value });
-            break;
-
-          case FilterValues.pixelate:
-            activeImage.filters[5] = new filters.Pixelate({ blocksize: value });
-            break;
-
-          case FilterValues.vibrance:
-            activeImage.filters[6] = new filters.Vibrance({ vibrance: value });
-            break;
-
-          case FilterValues.blend:
-            activeImage.filters[7] = new filters.BlendColor({
-              color: extra?.toString(),
-            });
-            break;
-
-          case FilterValues.grayscale:
-            if (value) activeImage.filters[10] = new filters.Grayscale();
-            else
-              activeImage.filters[10] = new filters.Brightness({
-                brightness: 0,
-              });
-            break;
-
-          case FilterValues.vintage:
-            if (value) activeImage.filters[11] = new filters.Vintage();
-            else
-              activeImage.filters[11] = new filters.Brightness({
-                brightness: 0,
-              });
-            break;
-
-          default:
-            break;
-        }
-
-        // activeImage.filters = [new filters.Brightness({ brightness: value })];
-        activeImage.applyFilters();
-        canvas.renderAll();
-      });
+      const filterIndex = Object.values(FilterType).indexOf(filterType);
+      activeImage.filters[filterIndex] = filterMap[filterType]();
+      activeImage.applyFilters();
+      canvas.renderAll();
     },
-    [pendingValueRef.current, canvas, activeImage]
+    [activeImage, canvas]
   );
 
+  // Event Handlers
+  const handleFilterChange = useMemo(
+    () =>
+      debounce((e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const filterType = name as FilterType;
+
+        pendingValueRef.current = Number(value);
+
+        if (rafRef.current) return;
+
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          const latestValue = pendingValueRef.current;
+
+          if (latestValue === null) return;
+
+          pendingValueRef.current = null;
+          applyFilter(
+            latestValue,
+            filterType,
+            filterType === FilterType.Blend ? value : undefined
+          );
+        });
+      }, 80),
+    [applyFilter]
+  );
+
+  const handleAddToCanvas = useCallback(async () => {
+    if (!originalImageRef.current || !activeImage) return;
+
+    setAddingToCanvas(true);
+
+    try {
+      const originalImage = originalImageRef.current;
+
+      // Create temporary canvas at original image size
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = originalImage.width!;
+      tempCanvas.height = originalImage.height!;
+
+      // Create a new Fabric.js canvas for the download
+      const downloadCanvas = new Canvas(tempCanvas);
+
+      // Clone the original image for download
+      const downloadImage = await originalImage.clone();
+
+      // Center image on the temporary canvas
+      // downloadImage.center();
+
+      // Add the image to the download canvas
+      downloadCanvas.add(downloadImage);
+
+      // Apply current filters
+      downloadImage.filters = [...activeImage.filters];
+      downloadImage.applyFilters();
+
+      // Render and download
+      downloadCanvas.renderAll();
+
+      tempCanvas.toBlob(async (blob) => {
+        if (!blob) {
+          throw new Error("Failed to create blob from canvas");
+        }
+
+        const arrayBuffer = await blob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        parent.postMessage(
+          {
+            type: "edited-image",
+            data: {
+              image: uint8Array,
+              width: downloadCanvas.width,
+              height: downloadCanvas.height,
+            },
+          },
+          "*"
+        );
+        // Clean up
+        downloadCanvas.dispose();
+
+        console.log("EDITED: ", uint8Array);
+
+        return uint8Array;
+      });
+    } catch (error) {
+      console.error("Error during download:", error);
+    }
+  }, [originalImageRef, activeImage]);
+
+  const resetAll = () => {
+    setFilterValues(initialState);
+
+    if (activeImage && canvas) {
+      activeImage.filters = [];
+      activeImage.applyFilters();
+      canvas.renderAll();
+    }
+  };
+
+  // Cleanup
   useEffect(() => {
     return () => {
       if (rafRef.current) {
@@ -144,318 +230,91 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
     };
   }, []);
 
-  useEffect(() => {
-    if (canvasRef.current) {
-      const fabricCanvas = new Canvas(canvasRef.current, {
-        width: 600,
-        height: 400,
-        backgroundColor: "#828282",
-      });
-      setCanvas(fabricCanvas);
+  // Render Filter Controls
+  const renderFilterControl = (filterType: FilterType) => {
+    const config = FILTER_CONFIG[filterType];
+    const isColorPicker = filterType === FilterType.Blend;
 
-      return () => {
-        fabricCanvas.dispose();
-      };
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!canvas) return;
-
-    // canvas.width = 600;
-    // canvas.height = 400;
-
-    canvas.setDimensions({
-      width: 300,
-      height: 300,
-    });
-
-    if (!imageData) {
-      return;
-    }
-
-    FabricImage.fromURL(
-      `data:image/png;base64, ${arrayBufferToBase64(imageData)}`
-    ).then((img) => {
-      originalImageRef.current = img;
-      const scale =
-        Math.min(canvas.width / img.width!, canvas.height / img.height!) * 0.5;
-
-      img.scaleToWidth(canvas.width);
-      img.scaleToHeight(canvas.height);
-
-      canvas.clear();
-      canvas.add(img);
-      setActiveImage(img);
-      setTimeout(() => {
-        if (activeImage)
-          activeImage.filters = [
-            new filters.Brightness({
-              brightness: 0,
-            }),
-            new filters.Contrast({
-              contrast: 0,
-            }),
-            new filters.Saturation({
-              saturation: 0,
-            }),
-            new filters.Blur({
-              blur: 0,
-            }),
-          ];
-      }, 10);
-    });
-  }, [canvas, imageData]);
-
-  const handleFilters = useMemo(
-    () =>
-      debounce(
-        (e: React.ChangeEvent<HTMLInputElement>) => {
-          if (e.target.name === FilterValues.blend) {
-            applyFiltersWithRAF(
-              0,
-              e.target.name as FilterValues,
-              e.target.value
-            );
-            return;
-          }
-          console.log("change", e.target);
-
-          const value = Number(e.target.value);
-          applyFiltersWithRAF(value, e.target.name as FilterValues);
-        },
-        80,
-        { leading: false, trailing: true }
-      ),
-    [activeImage, canvas]
-  );
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const valueStr = e.target.value;
-
-    if (e.target.name === FilterValues.blend) {
-      setFilterVals((prev) => ({
-        ...prev,
-        [e.target.name]: valueStr,
-      }));
-      return;
-    }
-
-    const value = Number(e.target.value);
-    setFilterVals((prev) => ({ ...prev, [e.target.name]: value }));
-  }, []);
-
-  const handleDownload = () => {
-    if (canvasRef.current) {
-      canvasRef.current.toBlob(function (blob) {
-        const url = URL.createObjectURL(blob as Blob);
-        const link = document.createElement("a");
-        link.download = "canvas-image.png";
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
-      });
-    }
+    return (
+      <div className="form-group" key={filterType}>
+        <label className="input-label caption" htmlFor={filterType}>
+          {filterType === FilterType.Blend ? "Color Blend" : filterType}
+        </label>
+        <input
+          type={isColorPicker ? "color" : "range"}
+          className="input range"
+          data-theme={theme}
+          name={filterType}
+          id={filterType}
+          min={config?.min}
+          max={config?.max}
+          step={config?.step}
+          value={filterValues[filterType]}
+          onChange={(e) => {
+            setFilterValues((prev) => ({
+              ...prev,
+              [filterType]: isColorPicker
+                ? e.target.value
+                : Number(e.target.value),
+            }));
+            handleFilterChange(e);
+          }}
+          disabled={!activeImage || isAddingToCanvas}
+        />
+      </div>
+    );
   };
 
   return (
     <div className="container">
       <div className="image-editor">
-        <canvas ref={canvasRef} data-theme={theme} />
-        <div className="form-container">
-          <div className="column column-1">
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="brightness">
-                Brightness
-              </label>
-              <button className="reset">↺</button>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.brightness}
-                id="brightness"
-                min={-0.8}
-                step={0.05}
-                max={0.8}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.brightness}
-              />
-            </div>
+        <canvas
+          ref={canvasRef}
+          data-theme={theme}
+          style={{
+            border: `1px solid ${theme === "dark" ? "#2e3434" : "#eef0f2"}`,
+          }}
+        />
 
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="contrast">
-                Contrast
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.contrast}
-                id="contrast"
-                min={-0.8}
-                step={0.05}
-                max={0.8}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.contrast}
-              />
-            </div>
+        {!activeImage && !isLoading ? (
+          <div className="caption message">Select an image to edit</div>
+        ) : null}
 
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="saturation">
-                Saturation
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.saturation}
-                id="saturation"
-                min={-1}
-                step={0.05}
-                max={1}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.saturation}
-              />
-            </div>
+        {isLoading ? (
+          <div className="caption message">
+            <Loader />
+          </div>
+        ) : null}
 
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="blur">
-                Blur
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.blur}
-                id="blur"
-                min={0}
-                step={0.05}
-                max={1}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.blur}
-              />
+        <div>
+          <div className="form-container">
+            <div className="column column-1">
+              {Object.values(FilterType).slice(0, 5).map(renderFilterControl)}
             </div>
-
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="grayscale">
-                grayscale
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.grayscale}
-                id="grayscale"
-                min={0}
-                step={1}
-                max={1}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.grayscale}
-              />
+            <div className="column column-2">
+              {Object.values(FilterType).slice(5).map(renderFilterControl)}
             </div>
           </div>
-          <div className="column column-2">
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="vintage">
-                vintage
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.vintage}
-                id="vintage"
-                min={0}
-                step={1}
-                max={1}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.vintage}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="noise">
-                noise
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.noise}
-                id="noise"
-                min={0}
-                step={1}
-                max={200}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.noise}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="pixelate">
-                pixelate
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.pixelate}
-                id="pixelate"
-                min={1}
-                step={1}
-                max={5}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.pixelate}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="vibrance">
-                vibrance
-              </label>
-              <input
-                type="range"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.vibrance}
-                id="vibrance"
-                min={0}
-                step={0.05}
-                max={1.25}
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.vibrance}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="input-label caption" htmlFor="blend">
-                color blend
-              </label>
-              <input
-                type="color"
-                className="input range"
-                data-theme={theme}
-                name={FilterValues.blend}
-                id="blend"
-                onInput={handleFilters}
-                onChange={handleChange}
-                value={filterVals.blend}
-              />
-            </div>
+          <div className="button-container">
+            <button
+              className="download-button"
+              data-appearance="secondary"
+              onClick={resetAll}
+              disabled={!activeImage || isAddingToCanvas}
+            >
+              Reset All
+            </button>
+            <button
+              className="add-to-canvas-button"
+              data-appearance="primary"
+              onClick={handleAddToCanvas}
+              disabled={!activeImage || isAddingToCanvas}
+            >
+              {isAddingToCanvas ? <Loader /> : <span>Add to Canvas</span>}
+            </button>
           </div>
         </div>
       </div>
-      <button onClick={handleDownload}>Download</button>
     </div>
   );
 }

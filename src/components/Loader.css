@@ -1,0 +1,41 @@
+.loader {
+  width: 15px;
+  aspect-ratio: 1;
+  border-radius: 100%;
+  border-top: 2px solid transparent;
+
+  animation: loading 1s infinite linear;
+}
+
+.app[data-theme="dark"] .loader {
+  border-right: 2px solid var(--df-secondary);
+  border-left: 2px solid var(--df-secondary);
+  border-bottom: 2px solid var(--df-secondary);
+}
+
+.app[data-theme="light"] .loader {
+  border-right: 2px solid var(--lf-secondary);
+  border-left: 2px solid var(--lf-secondary);
+  border-bottom: 2px solid var(--lf-secondary);
+}
+
+.center {
+  margin: auto;
+}
+
+@keyframes loading {
+  0% {
+    rotate: 0deg;
+  }
+
+  100% {
+    rotate: 360deg;
+  }
+}
+
+[data-theme="light"] .range {
+  accent-color: var(--la-primary);
+}
+[data-theme="dark"] .range {
+  accent-color: var(--da-primary);
+}
