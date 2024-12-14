@@ -1,6 +1,6 @@
 import type { PluginMessageEvent } from "./model";
 
-penpot.ui.open("React example plugin", `?theme=${penpot.theme}`, {
+penpot.ui.open("RasterMan - Image Editor", `?theme=${penpot.theme}`, {
   width: 640,
   height: 380,
 });
