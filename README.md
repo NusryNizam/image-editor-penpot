@@ -1,5 +1,3 @@
-# Example plugin (React)
+# RasterMan - Image Editor
 
-This is a plugin example for Penpot.
-
-For the full documentation go to: [Plugins](https://help.penpot.app/plugins/).
+Plugin to edit images within Penpot

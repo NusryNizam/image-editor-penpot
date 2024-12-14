@@ -1,7 +1,6 @@
 {
-  "name": "react-example-plugin",
-  "private": true,
-  "version": "0.0.0",
+  "name": "raster-man",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
