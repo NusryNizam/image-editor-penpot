@@ -4,11 +4,13 @@ import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useImageLoader } from "../hooks/useImageLoader";
 import { useCanvas } from "../hooks/useCanvas";
 import "./ImageEditor.css";
+import Loader from "./Loader";
 
 // Types and Interfaces
 interface ImageProps {
   imageData?: Uint8Array;
   theme?: string;
+  isLoading: boolean;
 }
 
 interface FilterState {
@@ -67,7 +69,7 @@ const initialState = {
 };
 
 // Main Component
-function ImageEditor({ imageData, theme = "light" }: ImageProps) {
+function ImageEditor({ imageData, theme = "light", isLoading }: ImageProps) {
   const { canvasRef, canvas } = useCanvas(300, 300);
   const { activeImage, originalImageRef } = useImageLoader(canvas, imageData);
 
@@ -201,6 +203,12 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
 
   const resetAll = () => {
     setFilterValues(initialState);
+
+    if (activeImage && canvas) {
+      activeImage.filters = [];
+      activeImage.applyFilters();
+      canvas.renderAll();
+    }
   };
 
   // Cleanup
@@ -257,9 +265,17 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
             border: `1px solid ${theme === "dark" ? "#2e3434" : "#eef0f2"}`,
           }}
         />
-        {!activeImage ? (
+
+        {!activeImage && !isLoading ? (
           <div className="caption message">Select an image to edit</div>
         ) : null}
+
+        {isLoading ? (
+          <div className="caption message">
+            <Loader />
+          </div>
+        ) : null}
+
         <div>
           <div className="form-container">
             <div className="column column-1">

@@ -10,6 +10,10 @@ penpot.on("themechange", (theme) => {
 });
 
 penpot.on("selectionchange", async () => {
+  penpot.ui.sendMessage({
+    type: "changing-selection-start",
+  });
+
   const image = penpot.selection.filter((e) => e.type === "rectangle")[0];
 
   if (image) {
@@ -21,6 +25,10 @@ penpot.on("selectionchange", async () => {
     penpot.ui.sendMessage({
       type: "selection",
       data: exportedImage,
+    });
+  } else {
+    penpot.ui.sendMessage({
+      type: "changing-selection-end",
     });
   }
 });
