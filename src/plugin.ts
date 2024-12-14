@@ -32,3 +32,31 @@ penpot.on("selectionchange", async () => {
 function sendMessage(message: PluginMessageEvent) {
   penpot.ui.sendMessage(message);
 }
+
+penpot.ui.onMessage((message: any) => {
+  if (message.type === "edited-image") {
+    addToCanvas(message.data);
+  }
+});
+
+async function addToCanvas(data: {
+  image: Uint8Array;
+  width: number;
+  height: number;
+}) {
+  const image = await penpot.uploadMediaData(
+    "edited-image",
+    data.image,
+    "image/png"
+  );
+
+  if (image) {
+    penpot.ui.sendMessage({ type: "image-success" });
+  }
+
+  const rect = penpot.createRectangle();
+  rect.x = penpot.viewport.center.x;
+  rect.y = penpot.viewport.center.y;
+  rect.resize(data.width, data.height);
+  rect.fills = [{ fillOpacity: 1, fillImage: image }];
+}

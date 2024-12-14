@@ -1,4 +1,4 @@
-import { filters } from "fabric";
+import { Canvas, filters } from "fabric";
 import { debounce } from "lodash";
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useImageLoader } from "../hooks/useImageLoader";
@@ -47,7 +47,7 @@ const FILTER_CONFIG: Record<
   [FilterType.Saturation]: { min: -1, max: 1, step: 0.05, default: 0 },
   [FilterType.Blur]: { min: 0, max: 1, step: 0.05, default: 0 },
   [FilterType.Noise]: { min: 0, max: 200, step: 1, default: 0 },
-  [FilterType.Pixelate]: { min: 1, max: 5, step: 1, default: 1 },
+  [FilterType.Pixelate]: { min: 1, max: 50, step: 1, default: 1 },
   [FilterType.Grayscale]: { min: 0, max: 1, step: 1, default: 0 },
   [FilterType.Vintage]: { min: 0, max: 1, step: 1, default: 0 },
   [FilterType.Vibrance]: { min: 0, max: 1.25, step: 0.05, default: 0 },
@@ -138,18 +138,66 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
     [applyFilter]
   );
 
-  const handleDownload = useCallback(() => {
-    if (!canvasRef.current) return;
+  const handleAddToCanvas = useCallback(async () => {
+    if (!originalImageRef.current || !activeImage) return;
 
-    canvasRef.current.toBlob((blob) => {
-      const url = URL.createObjectURL(blob as Blob);
-      const link = document.createElement("a");
-      link.download = "edited-image.png";
-      link.href = url;
-      link.click();
-      URL.revokeObjectURL(url);
-    });
-  }, []);
+    try {
+      const originalImage = originalImageRef.current;
+
+      // Create temporary canvas at original image size
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = originalImage.width!;
+      tempCanvas.height = originalImage.height!;
+
+      // Create a new Fabric.js canvas for the download
+      const downloadCanvas = new Canvas(tempCanvas);
+
+      // Clone the original image for download
+      const downloadImage = await originalImage.clone();
+
+      // Center image on the temporary canvas
+      // downloadImage.center();
+
+      // Add the image to the download canvas
+      downloadCanvas.add(downloadImage);
+
+      // Apply current filters
+      downloadImage.filters = [...activeImage.filters];
+      downloadImage.applyFilters();
+
+      // Render and download
+      downloadCanvas.renderAll();
+
+      tempCanvas.toBlob(async (blob) => {
+        if (!blob) {
+          throw new Error("Failed to create blob from canvas");
+        }
+
+        const arrayBuffer = await blob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        parent.postMessage(
+          {
+            type: "edited-image",
+            data: {
+              image: uint8Array,
+              width: downloadCanvas.width,
+              height: downloadCanvas.height,
+            },
+          },
+          "*"
+        );
+        // Clean up
+        downloadCanvas.dispose();
+
+        console.log("EDITED: ", uint8Array);
+
+        return uint8Array;
+      });
+    } catch (error) {
+      console.error("Error during download:", error);
+    }
+  }, [originalImageRef, activeImage]);
 
   // Cleanup
   useEffect(() => {
@@ -189,6 +237,7 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
             }));
             handleFilterChange(e);
           }}
+          disabled={!activeImage}
         />
       </div>
     );
@@ -197,7 +246,13 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
   return (
     <div className="container">
       <div className="image-editor">
-        <canvas ref={canvasRef} data-theme={theme} />
+        <canvas
+          ref={canvasRef}
+          data-theme={theme}
+          style={{
+            border: `1px solid ${theme === "dark" ? "#2e3434" : "#eef0f2"}`,
+          }}
+        />
         <div className="form-container">
           <div className="column column-1">
             {Object.values(FilterType).slice(0, 5).map(renderFilterControl)}
@@ -207,7 +262,7 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
           </div>
         </div>
       </div>
-      <button className="download-button" onClick={handleDownload}>
+      <button className="download-button" onClick={handleAddToCanvas}>
         Download
       </button>
     </div>
