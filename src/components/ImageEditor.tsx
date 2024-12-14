@@ -53,25 +53,25 @@ const FILTER_CONFIG: Record<
   [FilterType.Vibrance]: { min: 0, max: 1.25, step: 0.05, default: 0 },
 };
 
-// Custom Hooks
+const initialState = {
+  brightness: 0,
+  contrast: 0,
+  saturation: 0,
+  blur: 0,
+  grayscale: 0,
+  vintage: 0,
+  noise: 0,
+  pixelate: 1,
+  vibrance: 0,
+  blend: "#ffffff",
+};
 
 // Main Component
 function ImageEditor({ imageData, theme = "light" }: ImageProps) {
   const { canvasRef, canvas } = useCanvas(300, 300);
   const { activeImage, originalImageRef } = useImageLoader(canvas, imageData);
 
-  const [filterValues, setFilterValues] = useState<FilterState>({
-    brightness: 0,
-    contrast: 0,
-    saturation: 0,
-    blur: 0,
-    grayscale: 0,
-    vintage: 0,
-    noise: 0,
-    pixelate: 1,
-    vibrance: 0,
-    blend: "#ffffff",
-  });
+  const [filterValues, setFilterValues] = useState<FilterState>(initialState);
 
   const rafRef = useRef<number | null>(null);
   const pendingValueRef = useRef<number | null>(null);
@@ -199,6 +199,10 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
     }
   }, [originalImageRef, activeImage]);
 
+  const resetAll = () => {
+    setFilterValues(initialState);
+  };
+
   // Cleanup
   useEffect(() => {
     return () => {
@@ -253,18 +257,38 @@ function ImageEditor({ imageData, theme = "light" }: ImageProps) {
             border: `1px solid ${theme === "dark" ? "#2e3434" : "#eef0f2"}`,
           }}
         />
-        <div className="form-container">
-          <div className="column column-1">
-            {Object.values(FilterType).slice(0, 5).map(renderFilterControl)}
+        {!activeImage ? (
+          <div className="caption message">Select an image to edit</div>
+        ) : null}
+        <div>
+          <div className="form-container">
+            <div className="column column-1">
+              {Object.values(FilterType).slice(0, 5).map(renderFilterControl)}
+            </div>
+            <div className="column column-2">
+              {Object.values(FilterType).slice(5).map(renderFilterControl)}
+            </div>
           </div>
-          <div className="column column-2">
-            {Object.values(FilterType).slice(5).map(renderFilterControl)}
+          <div className="button-container">
+            <button
+              className="download-button"
+              data-appearance="secondary"
+              onClick={resetAll}
+              disabled={!activeImage}
+            >
+              Reset All
+            </button>
+            <button
+              className="download-button"
+              data-appearance="primary"
+              onClick={handleAddToCanvas}
+              disabled={!activeImage}
+            >
+              Add to Canvas
+            </button>
           </div>
         </div>
       </div>
-      <button className="download-button" onClick={handleAddToCanvas}>
-        Download
-      </button>
     </div>
   );
 }

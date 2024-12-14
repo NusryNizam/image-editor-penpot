@@ -1,7 +1,8 @@
 .image-editor {
-  padding: 1rem;
+  padding-top: 1rem;
   display: flex;
   gap: 1rem;
+  position: relative;
 }
 
 canvas[data-theme="light"] {
@@ -20,4 +21,16 @@ label {
   display: flex;
   flex-direction: row;
   gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.button-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.message {
+  position: absolute;
+  left: 1rem;
+  top: 2rem;
 }
