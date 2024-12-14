@@ -9,28 +9,8 @@ penpot.on("themechange", (theme) => {
   sendMessage({ type: "theme", content: theme });
 });
 
-penpot.on("selectionchange", async () => {
-  penpot.ui.sendMessage({
-    type: "changing-selection-start",
-  });
-
-  const image = penpot.selection.filter((e) => e.type === "rectangle")[0];
-
-  if (image) {
-    const exportedImage = await image.export({
-      type: "png",
-      scale: 1,
-    });
-
-    penpot.ui.sendMessage({
-      type: "selection",
-      data: exportedImage,
-    });
-  } else {
-    penpot.ui.sendMessage({
-      type: "changing-selection-end",
-    });
-  }
+penpot.on("selectionchange", () => {
+  sendSelected();
 });
 
 function sendMessage(message: PluginMessageEvent) {
@@ -64,3 +44,29 @@ async function addToCanvas(data: {
   rect.resize(data.width, data.height);
   rect.fills = [{ fillOpacity: 1, fillImage: image }];
 }
+
+async function sendSelected() {
+  penpot.ui.sendMessage({
+    type: "changing-selection-start",
+  });
+
+  const image = penpot.selection.filter((e) => e.type === "rectangle")[0];
+
+  if (image) {
+    const exportedImage = await image.export({
+      type: "png",
+      scale: 1,
+    });
+
+    penpot.ui.sendMessage({
+      type: "selection",
+      data: exportedImage,
+    });
+  } else {
+    penpot.ui.sendMessage({
+      type: "changing-selection-end",
+    });
+  }
+}
+
+sendSelected();

@@ -238,7 +238,7 @@ function ImageEditor({
     return (
       <div className="form-group" key={filterType}>
         <label className="input-label caption" htmlFor={filterType}>
-          {filterType}
+          {filterType === FilterType.Blend ? "Color Blend" : filterType}
         </label>
         <input
           type={isColorPicker ? "color" : "range"}
