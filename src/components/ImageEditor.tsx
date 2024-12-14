@@ -11,6 +11,8 @@ interface ImageProps {
   imageData?: Uint8Array;
   theme?: string;
   isLoading: boolean;
+  isAddingToCanvas: boolean;
+  setAddingToCanvas: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface FilterState {
@@ -69,7 +71,13 @@ const initialState = {
 };
 
 // Main Component
-function ImageEditor({ imageData, theme = "light", isLoading }: ImageProps) {
+function ImageEditor({
+  imageData,
+  theme = "light",
+  isLoading,
+  isAddingToCanvas,
+  setAddingToCanvas,
+}: ImageProps) {
   const { canvasRef, canvas } = useCanvas(300, 300);
   const { activeImage, originalImageRef } = useImageLoader(canvas, imageData);
 
@@ -142,6 +150,8 @@ function ImageEditor({ imageData, theme = "light", isLoading }: ImageProps) {
 
   const handleAddToCanvas = useCallback(async () => {
     if (!originalImageRef.current || !activeImage) return;
+
+    setAddingToCanvas(true);
 
     try {
       const originalImage = originalImageRef.current;
@@ -249,7 +259,7 @@ function ImageEditor({ imageData, theme = "light", isLoading }: ImageProps) {
             }));
             handleFilterChange(e);
           }}
-          disabled={!activeImage}
+          disabled={!activeImage || isAddingToCanvas}
         />
       </div>
     );
@@ -290,17 +300,17 @@ function ImageEditor({ imageData, theme = "light", isLoading }: ImageProps) {
               className="download-button"
               data-appearance="secondary"
               onClick={resetAll}
-              disabled={!activeImage}
+              disabled={!activeImage || isAddingToCanvas}
             >
               Reset All
             </button>
             <button
-              className="download-button"
+              className="add-to-canvas-button"
               data-appearance="primary"
               onClick={handleAddToCanvas}
-              disabled={!activeImage}
+              disabled={!activeImage || isAddingToCanvas}
             >
-              Add to Canvas
+              {isAddingToCanvas ? <Loader /> : <span>Add to Canvas</span>}
             </button>
           </div>
         </div>

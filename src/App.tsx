@@ -7,6 +7,7 @@ function App() {
   const initialTheme = url.searchParams.get("theme");
   const [imageData, setImageData] = useState<Uint8Array>();
   const [isSelecting, setIsSelecting] = useState(false);
+  const [isAddingToCanvas, setIsAddingToCanvas] = useState(false);
 
   const [theme, setTheme] = useState(initialTheme || undefined);
 
@@ -27,6 +28,10 @@ function App() {
       setIsSelecting(false);
       setImageData(event.data.data);
     }
+
+    if (event.data.type === "image-success") {
+      setIsAddingToCanvas(false);
+    }
   });
 
   return (
@@ -35,6 +40,8 @@ function App() {
         theme={theme}
         imageData={imageData}
         isLoading={isSelecting}
+        isAddingToCanvas={isAddingToCanvas}
+        setAddingToCanvas={setIsAddingToCanvas}
       />
     </div>
   );
