@@ -10,4 +10,5 @@ Plugin to edit images within Penpot
 ![ss](https://github.com/user-attachments/assets/6620db0f-a007-4a41-9cae-99ca89792716)
 
 
+Get it here: https://penpot.app/penpothub/plugins/rasterman-image-editor
 Hosted on Netlify: https://rasterman.netlify.app/manifest.json
